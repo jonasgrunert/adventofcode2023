@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "test": "deno test -A",
+    "run": "deno run -A _util.ts",
+    "build": "deno run -A bundle.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"]
+  }
+}
