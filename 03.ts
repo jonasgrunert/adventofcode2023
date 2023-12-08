@@ -81,7 +81,7 @@ const task = new Solution(
       }
     }
     let sum = 0;
-    for (const [g, r] of gears.entries()) {
+    for (const [_, r] of gears.entries()) {
       // only gears with two number are gears
       if (r.length === 2) {
         sum += r.reduce((p, c) => p * c, 1);
@@ -91,7 +91,7 @@ const task = new Solution(
   },
   {
     sep: "\n",
-  },
+  }
 );
 task.expect(4361, 467835);
 
