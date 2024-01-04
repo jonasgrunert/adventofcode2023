@@ -1,7 +1,7 @@
 import Solution from "./solution.ts";
 
 type Point = { x: number; y: number; l: number; d: number; p?: Point };
-const toPoint = (point: Point) => `${point.x}_${point.y}_${point.d}`;
+const toPoint = (point: Point) => (point.x << 16) | (point.y << 4) | point.d;
 const dirs = [{
   x: -1,
   y: 0,
@@ -131,12 +131,9 @@ const aStar = (
     l: 0,
     d: 2,
   });
-  const closed = new Set<string>();
+  const closed = new Map<number, number>();
   while (!open.empty) {
     const { f, ...current } = open.pop();
-    if (closed.has(toPoint(current))) {
-      continue;
-    }
     if (
       current.x === target.x && current.y === target.y
     ) {
@@ -148,30 +145,17 @@ const aStar = (
         maxY: map[0].length,
       }, unstable ? { min: 4, max: 10 } : { min: 1, max: 3 })
     ) {
-      open.add(
-        newNode,
-        f + g(map, newNode),
-      );
+      const cost = f + g(map, newNode);
+      if ((closed.get(toPoint(newNode)) ?? Infinity) > cost) {
+        open.add(
+          newNode,
+          f + g(map, newNode),
+        );
+        closed.set(toPoint(newNode), cost);
+      }
     }
-    closed.add(toPoint(current));
   }
   return null;
-};
-
-const display = (map: number[][], result: Point) => {
-  const nodes: Point[] = [];
-  let n: Point | undefined = result;
-  while (n) {
-    nodes.push(n);
-    n = n.p;
-  }
-  const d = ["^", ">", "v", "<", "."];
-  return map.map((m, x) =>
-    m.map((l, y) => nodes.find((n) => n.x === x && n.y === y) ? l : "." ?? l)
-      .join(
-        "",
-      )
-  ).join("\n");
 };
 
 const task = new Solution(
