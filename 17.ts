@@ -1,7 +1,7 @@
 import Solution from "./solution.ts";
 
 type Point = { x: number; y: number; l: number; d: number; p?: Point };
-const toPoint = (point: Point) => `${point.x}_${point.y}_${point.d}_${point.l}`;
+const toPoint = (point: Point) => `${point.x}_${point.y}_${point.d}`;
 const dirs = [{
   x: -1,
   y: 0,
@@ -19,35 +19,39 @@ const dirs = [{
 class Queue {
   #points: Array<Point & { f: number }>;
 
-  get points() {
-    return this.#points;
-  }
-
-  constructor(start?: Point) {
-    this.#points = start ? [{ ...start, f: 0 }] : [];
+  constructor(...start: Point[]) {
+    this.#points = start.map((s) => ({ ...s, f: 0 }));
   }
 
   add(point: Point, f: number) {
-    const p = this.get(point);
-    if (p) {
-      if (f < p.f) {
-        p.f = f;
-        p.p = point.p;
-      }
-    } else {
-      this.#points.push({ ...point, f });
+    if (this.#points.length == 0 || this.#points[0].f < f) {
+      this.#points.splice(0, 0, { ...point, f });
+      return;
     }
-    this.#points.sort((a, b) => b.f - a.f);
-  }
-
-  get(point: Point) {
-    return this.#points.find(
-      (p) =>
-        p.x === point.x &&
-        p.y === point.y &&
-        p.l === point.l &&
-        p.d === point.d,
-    );
+    if (this.#points[this.#points.length - 1].f > f) {
+      this.#points.push({ ...point, f });
+      return;
+    }
+    let lower = 0,
+      upper = this.#points.length,
+      lastLower = lower,
+      lastUpper = upper;
+    while (lower < upper) {
+      const inPos = (lower + upper) >> 1;
+      if (this.#points[inPos].f > f) {
+        lower = inPos;
+      } else if (this.#points[inPos].f < f) {
+        upper = inPos;
+      } else {
+        upper = inPos;
+        lower = inPos;
+      }
+      if (lower == lastLower && upper == lastUpper) {
+        break;
+      }
+      lastLower = lower, lastUpper = upper;
+    }
+    this.#points.splice(upper, 0, { ...point, f });
   }
 
   pop() {
@@ -62,27 +66,55 @@ class Queue {
 const g = (
   map: number[][],
   node: Point,
-): number => node.p ? map[node.x][node.y] + g(map, node.p) : 0;
+): number => {
+  if (node.p) {
+    switch (node.d) {
+      case 0:
+        return map.slice(node.x, node.p.x).reduce((p, c) => p + c[node.y], 0);
+      case 1:
+        return map[node.x].slice(node.p.y + 1, node.y + 1).reduce(
+          (p, c) => p + c,
+          0,
+        );
+      case 2:
+        return map.slice(node.p.x + 1, node.x + 1).reduce(
+          (p, c) => p + c[node.y],
+          0,
+        );
+      case 3:
+        return map[node.x].slice(node.y, node.p.y).reduce(
+          (p, c) => p + c,
+          0,
+        );
+    }
+  }
+  return 0;
+};
 
-const expand = (node: Point, maxX: number, maxY: number, unstable = false) => {
+const rem = (n: number, d: number) => ((n % d) + d) % d;
+
+const expand = (
+  node: Point,
+  borders: { maxX: number; maxY: number },
+  opts: { min: number; max: number },
+) => {
   const nodes: Point[] = [];
-  for (let i = 0; i < dirs.length; i++) {
-    const newPoint = {
-      x: node.x + dirs[i].x,
-      y: node.y + dirs[i].y,
-      d: i,
-      l: node.d === i ? node.l + 1 : 0,
-      p: node,
-    };
-    if (
-      newPoint.x >= 0 && newPoint.x < maxX && newPoint.y >= 0 &&
-      newPoint.y < maxY && Math.abs(newPoint.d - node.d) != 2 &&
-      (unstable
-        ? newPoint.l < 10 &&
-          (newPoint.d === node.d || node.l >= 3 || node.p == undefined)
-        : newPoint.l < 3)
-    ) {
-      nodes.push(newPoint);
+  for (const i of [-1, 1]) {
+    const d = rem(node.d + i, dirs.length);
+    for (let l = opts.min; l <= opts.max; l++) {
+      const newPoint = {
+        x: node.x + dirs[d].x * l,
+        y: node.y + dirs[d].y * l,
+        d,
+        l,
+        p: node,
+      };
+      if (
+        newPoint.x >= 0 && newPoint.x < borders.maxX && newPoint.y >= 0 &&
+        newPoint.y < borders.maxY
+      ) {
+        nodes.push(newPoint);
+      }
     }
   }
   return nodes;
@@ -93,40 +125,60 @@ const aStar = (
   target: { x: number; y: number },
   unstable = false,
 ) => {
-  const open = new Queue({ x: 0, y: 0, l: 0, d: 0 });
+  const open = new Queue({ x: 0, y: 0, l: 0, d: 1 }, {
+    x: 0,
+    y: 0,
+    l: 0,
+    d: 2,
+  });
   const closed = new Set<string>();
-  closed.add("0_0_0_0");
   while (!open.empty) {
-    const current = open.pop();
-    if (
-      current.x === target.x && current.y === target.y &&
-      (unstable ? current.l >= 3 : true)
-    ) {
-      return current;
+    const { f, ...current } = open.pop();
+    if (closed.has(toPoint(current))) {
+      continue;
     }
-    const currentG = g(map, current);
-    for (
-      const newNode of expand(current, map.length, map[0].length, unstable)
+    if (
+      current.x === target.x && current.y === target.y
     ) {
-      if (!closed.has(toPoint(newNode))) {
-        const newG = map[newNode.x][newNode.y] + currentG;
-        open.add(
-          newNode,
-          newG + Math.abs(target.x - newNode.x) +
-            Math.abs(target.y - newNode.y),
-        );
-      }
+      return f;
+    }
+    for (
+      const newNode of expand(current, {
+        maxX: map.length,
+        maxY: map[0].length,
+      }, unstable ? { min: 4, max: 10 } : { min: 1, max: 3 })
+    ) {
+      open.add(
+        newNode,
+        f + g(map, newNode),
+      );
     }
     closed.add(toPoint(current));
   }
   return null;
 };
 
+const display = (map: number[][], result: Point) => {
+  const nodes: Point[] = [];
+  let n: Point | undefined = result;
+  while (n) {
+    nodes.push(n);
+    n = n.p;
+  }
+  const d = ["^", ">", "v", "<", "."];
+  return map.map((m, x) =>
+    m.map((l, y) => nodes.find((n) => n.x === x && n.y === y) ? l : "." ?? l)
+      .join(
+        "",
+      )
+  ).join("\n");
+};
+
 const task = new Solution(
   (arr: number[][]) => {
     const result = aStar(arr, { x: arr.length - 1, y: arr[0].length - 1 });
     if (result) {
-      return g(arr, result);
+      return result;
     }
     return -1;
   },
@@ -137,7 +189,7 @@ const task = new Solution(
       true,
     );
     if (result) {
-      return g(arr, result);
+      return result;
     }
     return -1;
   },
