@@ -122,8 +122,7 @@ const expand = (
 
 const aStar = (
   map: number[][],
-  target: { x: number; y: number },
-  unstable = false,
+  opts: { min: number; max: number },
 ) => {
   const open = new Queue({ x: 0, y: 0, l: 0, d: 1 }, {
     x: 0,
@@ -135,7 +134,7 @@ const aStar = (
   while (!open.empty) {
     const { f, ...current } = open.pop();
     if (
-      current.x === target.x && current.y === target.y
+      current.x === map.length - 1 && current.y === map[0].length - 1
     ) {
       return f;
     }
@@ -143,7 +142,7 @@ const aStar = (
       const newNode of expand(current, {
         maxX: map.length,
         maxY: map[0].length,
-      }, unstable ? { min: 4, max: 10 } : { min: 1, max: 3 })
+      }, opts)
     ) {
       const cost = f + g(map, newNode);
       if ((closed.get(toPoint(newNode)) ?? Infinity) > cost) {
@@ -160,7 +159,7 @@ const aStar = (
 
 const task = new Solution(
   (arr: number[][]) => {
-    const result = aStar(arr, { x: arr.length - 1, y: arr[0].length - 1 });
+    const result = aStar(arr, { min: 1, max: 3 });
     if (result) {
       return result;
     }
@@ -169,8 +168,7 @@ const task = new Solution(
   (arr: number[][]) => {
     const result = aStar(
       arr,
-      { x: arr.length - 1, y: arr[0].length - 1 },
-      true,
+      { min: 4, max: 10 },
     );
     if (result) {
       return result;
