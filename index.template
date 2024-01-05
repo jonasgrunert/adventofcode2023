@@ -191,9 +191,11 @@
           document.querySelector(
             `[for=output-${part}`,
           ).innerHTML = `Result Task ${part} (${message.data.time}ms)`;
+          if(part == 2){
           const btn = document.getElementById("exec");
           btn.removeAttribute("disabled");
           btn.innerHTML = `Execute`;
+}
         } else {
           displayError(
             `We encountered an error while executing the worker: ${message.data.error.message}`,
