@@ -1,6 +1,6 @@
 import Solution from "./solution.ts";
 
-for await (const file of Deno.readDir(".")) {
+for (const file of [...Deno.readDirSync(".")].sort((a, b) => a.name.localeCompare(b.name))) {
   if (file.isFile && file.name.match(/\d{2}\.ts/)) {
     const { default: sol }: { default: Solution<unknown, unknown> } =
       await import(`./${file.name}`);
