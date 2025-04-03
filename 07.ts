@@ -17,9 +17,9 @@ const cards = [
   "0",
 ] as const;
 type Card = (typeof cards)[number];
-
+type UndoPartial<T> = T extends Partial<infer R> ? R : T;
 type Hand = {
-  counts: ReturnType<typeof Object.groupBy<string, Card>>;
+  counts: UndoPartial<ReturnType<typeof Object.groupBy<string, Card>>>;
   hand: string;
 };
 
